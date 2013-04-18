@@ -1,0 +1,15 @@
+<?php
+
+// Currently only one server at a time is supported, this is usually a vcenter
+// server.  All current testing was done against one vcenter server.  A single
+// ESX server should be possible but has not been tested.
+
+// vcenter DNS or IP address
+$vmserver = 'vcenter.example.com';
+
+// Provide the vcenter username and password
+//$vmlogin['inName']     = 'DOMAIN\user';
+$vmlogin['inName']     = 'username';
+$vmlogin['inPassword'] = 'password';
+
+?>
