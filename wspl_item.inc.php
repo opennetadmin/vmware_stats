@@ -82,35 +82,57 @@ EOL;
         // bottom line is, you need ot use the same names in both for best results or have vmtools installed.
 
         // connect to our Vcenter url
-        $vmsdk = new vmware_sdk("https://${vmserver}/sdk",$vmlogin['inName'],$vmlogin['inPassword']);
+        $vmsdk = new vmware_sdk($vmserver,$vmlogin['inName'],$vmlogin['inPassword']);
 
+        // Gather basic about info.. used for instance ID in URL
+        $vmabout = $vmsdk->about();
+        $instanceUuid = $vmabout->instanceUuid;
+
+// FIXME.. turn this back on when it works.. tests if we connected or not
+/*
+        // Print a nice message if we cannot connect
+        if (!$vmabout) {
+          $htmllines .= <<<EOL
+                Unable to connect to VCenter<br>
+EOL;
+          $response = new xajaxResponse();
+          $response->addAssign($form['divname'], "innerHTML", $htmllines);
+          return($response->getXML());
+        }
+*/
+
+/* FIXME LATER
         // Gather a list of hostclusters
-        $vmclusters = $vmsdk->get_clusters();
+        $vmclusters = $vmsdk->get_clusters('junk');
+print_r($vmclusters);
         foreach ($vmclusters->objects as $cluster) {
            $clustername = $cluster->propSet[1]->val;
            foreach ($cluster->propSet[0]->val->ManagedObjectReference as $hostref) {
                $hostcluster[$hostref] = $clustername;
            }
         }
+*/
 
         // Try to find our vm via FQDN as reported by vmtools
         $vmsearch = $vmsdk->find_vm($form['host_name']);
 
+/* FIXME TEST THIS LATER
         // If we find more than 1 host using the name, lets pick the first
-        $multicount = count($vmsearch[returnval]);
+        $multicount = count((array) $vmsearch[returnval]);
         $multimatch = '';
         if ($multicount > 1) {
             $vmsearch = $vmsearch[returnval][0];
             $multimatch = " <span title='Found multiple matching vhosts' style='background-color: yellow;'>Matched: {$multicount}</span>";
         }
+*/
 
         // Get vm details for the vm if we find it by name
-        if ($vmsearch) {
+        if ($vmsearch->returnval->_) {
             $foundhost=TRUE;
-            $vmsummary = $vmsdk->get_path($vmsearch,'VirtualMachine','summary');
-            $vmguest = $vmsdk->get_path($vmsearch,'VirtualMachine','guest');
-            $vmconfig = $vmsdk->get_path($vmsearch,'VirtualMachine','config');
-        } else {
+            $vmsummary = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','summary');
+            $vmguest = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','guest');
+            $vmconfig = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','config');
+        } /* else {
             // If we dont find it by name (using vmtools name) then search all names
             $allvms = $vmsdk->get_all_vms();
             foreach ($allvms->objects as $vmlist) {
@@ -132,13 +154,13 @@ EOL;
                 $hname = explode('.',$form['host_name']);
                 if (stripos($vmlist->propSet[3]->val->name,$hname[0]) === true) {
                     $foundhost=TRUE;
-                    $vmsummary = $vmsdk->get_path($vmsearch,'VirtualMachine','summary');
-                    $vmguest = $vmsdk->get_path($vmsearch,'VirtualMachine','guest');
-                    $vmconfig = $vmsdk->get_path($vmsearch,'VirtualMachine','config');
+                    $vmsummary = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','summary');
+                    $vmguest = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','guest');
+                    $vmconfig = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','config');
                     continue;
                 } 
             } 
-        }
+        } */
 
 
 
@@ -147,6 +169,10 @@ EOL;
                 No config file found.<br>
 EOL;
     }
+
+
+    // Should be done gathering data, log out of session
+    $vmsdk->logout();
 
     // If we never found our host, say so and bail
     if (!$foundhost) {
@@ -165,8 +191,14 @@ EOL;
 - Allow user to power on/off a vm from ONA
 */
 
+    // Convert past the returnval object
+    $vmconfig  = $vmconfig->returnval;
+    $vmsummary = $vmsummary->returnval;
+    $vmguest   = $vmguest->returnval;
+
+
     // Gather vm guest details
-    $vmid=$vmsummary->propSet->val->vm;
+    $vmid=$vmsummary->propSet->val->vm->_;
     $vmhost=$vmsummary->propSet->val->runtime->host;
     $vmip=$vmsummary->propSet->val->guest->ipAddress;
     foreach ($vmconfig->propSet->val->hardware->device as $vmdev) {
@@ -252,8 +284,7 @@ EOL;
     $html .= "</table>";
 
     // Build a link to this host in vcenter
-    $vclinkbase="https://${vmserver}/ui/?wsUrl=http://localhost:80/sdk&mo=VirtualMachine|{$vmid}";
-    $vclink="<a target='_blank' title='View host in vsphere' href='{$vclinkbase}&inventory=none&tabs=show_'><img src='{$images}/silk/application_form_magnify.png' border='0'></a> <a target='_blank' title='Open Console' href='{$vclinkbase}&inventory=none&tabs=hide_'><img src='{$images}/silk/application_xp_terminal.png' border='0'></a> ";
+    $vclink="<a target='_blank' title='View host in vsphere' href='https://${vmserver}:9443/vsphere-client/#extensionId=vsphere.core.vm.summary;context=com.vmware.core.model%3A%3AServerObjectRef~${instanceUuid}%3AVirtualMachine%3A${vmid}~core'><img src='{$images}/silk/application_form_magnify.png' border='0'></a> <a target='_blank' title='Open Console' href='http://${vmserver}:7331/console/?vmId=${vmid}&host={$vmserver}'><img src='{$images}/silk/application_xp_terminal.png' border='0'></a> ";
 
     // Insert the new table into the window
     $response = new xajaxResponse();
