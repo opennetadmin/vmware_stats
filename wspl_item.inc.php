@@ -56,7 +56,7 @@ Using curl, gather all of the data from supplied urls and format them in a table
 Then update the vmwareinfo innerHTML with the data.
 */
 function ws_display_stats($window_name, $form='') {
-    global $conf, $self, $onadb, $base, $images, $baseURL;
+    global $conf, $self, $onadb, $onabase, $base, $images, $baseURL;
 
     // If an array in a string was provided, build the array and store it in $form
     $form = parse_options_string($form);
@@ -65,7 +65,7 @@ function ws_display_stats($window_name, $form='') {
     require_once('vmwaresdk.php');
 
     // Pull in config file data
-    $vmconffile=dirname(__FILE__).'/vmware_stats.conf.php';
+    $vmconffile = (file_exists($onabase.'/etc/vmware_stats.conf.php')) ? $onabase.'/etc/vmware_stats.conf.php' : dirname(__FILE__).'/vmware_stats.conf.php';
     if (file_exists($vmconffile)) {
         @require_once($vmconffile);
         if (!isset($vmserver)) {
