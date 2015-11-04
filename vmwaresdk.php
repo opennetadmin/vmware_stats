@@ -9,21 +9,6 @@ point and then modified to do some things I needed.  Thanks for the great exampl
 */
 
 
-/*
-$matt = new vmware_sdk("vcenter.corp.keynetics.com",'onalookup','RA3a!r&8');
-//print_r($matt);
-
-print_r( $matt->about());
-
-$result = $matt->find_vm('a25.boi.keynetics.com');
-print_r($result);
-
-$matt->logout();
-*/
-
-
-
-
 
 
 class vmware_sdk
