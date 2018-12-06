@@ -4,12 +4,15 @@
 // server.  All current testing was done against one vcenter server.  A single
 // ESX server should be possible but has not been tested.
 
-// vcenter DNS or IP address
-$vmserver = 'vcenter.example.com';
-
 // Provide the vcenter username and password
-//$vmlogin['inName']     = 'DOMAIN\user';
-$vmlogin['inName']     = 'username';
-$vmlogin['inPassword'] = 'password';
+// vcenter DNS or IP address
+$vmlogin[0]['server']   = 'vcenter.example.com';
+$vmlogin[0]['user']     = 'username';
+$vmlogin[0]['password'] = 'password';
+
+// An optional second vmware server
+//$vmlogin[1]['server']   = 'another-vcenter.example.com';
+//$vmlogin[1]['user']     = 'DOMAIN\user';
+//$vmlogin[1]['password'] = 'password';
 
 ?>

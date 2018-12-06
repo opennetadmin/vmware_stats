@@ -7,7 +7,7 @@ This plugin Gathers information from a VMware system and displays it for each ho
   * Download the archive and place it in your $ONABASE/www/local/plugins directory, the directory must be named `vmware_stats`
   * Make the plugin directory owned by your webserver user I.E.: `chown -R www-data /opt/ona/www/local/plugins/vmware_stats`
   * `cp /opt/ona/www/local/plugins/vmware_stats/vmware_stats.conf.php.example /opt/ona/etc/vmware_stats.conf.php`
-  * Modify the `vmware_stats.conf.php` file and place the DNS name, user and password of each Fabric Interconnect.  Ideally this is a read only user.
+  * Modify the `vmware_stats.conf.php` file and provide the DNS name, user and password for each server.  Ideally this is a read only user.
 
 ## Usage
 

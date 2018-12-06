@@ -68,7 +68,7 @@ function ws_display_stats($window_name, $form='') {
     $vmconffile = (file_exists($onabase.'/etc/vmware_stats.conf.php')) ? $onabase.'/etc/vmware_stats.conf.php' : dirname(__FILE__).'/vmware_stats.conf.php';
     if (file_exists($vmconffile)) {
         @require_once($vmconffile);
-        if (!isset($vmserver)) {
+        if (!isset($vmlogin[0]['server'])) {
             $htmllines .= <<<EOL
                 No VCenter servers defined via config file.<br>
 EOL;
@@ -80,59 +80,63 @@ EOL;
         // 3. use find fuction using just the host portion of the name (part up to first dot)
         // yep there are probably much better ways of doing it.. this gets the majority of what I need for now
         // bottom line is, you need ot use the same names in both for best results or have vmtools installed.
+        foreach ( $vmlogin as $vmconnect ) {
+          // Save which server this is for later
+          $vmserver = $vmconnect['server'];
 
-        // connect to our Vcenter url
-        $vmsdk = new vmware_sdk($vmserver,$vmlogin['inName'],$vmlogin['inPassword']);
+          // connect to our Vcenter url
+          $vmsdk = new vmware_sdk($vmconnect['server'],$vmconnect['user'],$vmconnect['password']);
 
-        // Gather basic about info.. used for instance ID in URL
-        $vmabout = $vmsdk->about();
-        $instanceUuid = $vmabout->instanceUuid;
+          // Gather basic about info.. used for instance ID in URL
+          $vmabout = $vmsdk->about();
+
+          $instanceUuid = $vmabout->instanceUuid;
 
 // FIXME.. turn this back on when it works.. tests if we connected or not
 /*
-        // Print a nice message if we cannot connect
-        if (!$vmabout) {
-          $htmllines .= <<<EOL
+          // Print a nice message if we cannot connect
+          if (!$vmabout) {
+            $htmllines .= <<<EOL
                 Unable to connect to VCenter<br>
 EOL;
-          $response = new xajaxResponse();
-          $response->addAssign($form['divname'], "innerHTML", $htmllines);
-          return($response->getXML());
-        }
+            $response = new xajaxResponse();
+            $response->addAssign($form['divname'], "innerHTML", $htmllines);
+            return($response->getXML());
+          }
 */
 
 /* FIXME LATER
-        // Gather a list of hostclusters
-        $vmclusters = $vmsdk->get_clusters('junk');
-print_r($vmclusters);
-        foreach ($vmclusters->objects as $cluster) {
-           $clustername = $cluster->propSet[1]->val;
-           foreach ($cluster->propSet[0]->val->ManagedObjectReference as $hostref) {
-               $hostcluster[$hostref] = $clustername;
-           }
-        }
+          // Gather a list of hostclusters
+          $vmclusters = $vmsdk->get_clusters('junk');
+  print_r($vmclusters);
+          foreach ($vmclusters->objects as $cluster) {
+             $clustername = $cluster->propSet[1]->val;
+             foreach ($cluster->propSet[0]->val->ManagedObjectReference as $hostref) {
+                 $hostcluster[$hostref] = $clustername;
+             }
+          }
 */
 
-        // Try to find our vm via FQDN as reported by vmtools
-        $vmsearch = $vmsdk->find_vm($form['host_name']);
+          // Try to find our vm via FQDN as reported by vmtools
+          $vmsearch = $vmsdk->find_vm($form['host_name']);
 
 /* FIXME TEST THIS LATER
-        // If we find more than 1 host using the name, lets pick the first
-        $multicount = count((array) $vmsearch[returnval]);
-        $multimatch = '';
-        if ($multicount > 1) {
-            $vmsearch = $vmsearch[returnval][0];
-            $multimatch = " <span title='Found multiple matching vhosts' style='background-color: yellow;'>Matched: {$multicount}</span>";
-        }
+          // If we find more than 1 host using the name, lets pick the first
+          $multicount = count((array) $vmsearch[returnval]);
+          $multimatch = '';
+          if ($multicount > 1) {
+              $vmsearch = $vmsearch[returnval][0];
+              $multimatch = " <span title='Found multiple matching vhosts' style='background-color: yellow;'>Matched: {$multicount}</span>";
+          }
 */
 
-        // Get vm details for the vm if we find it by name
-        if ($vmsearch->returnval->_) {
+          // Get vm details for the vm if we find it by name
+          if ($vmsearch->returnval->_) {
             $foundhost=TRUE;
             $vmsummary = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','summary');
             $vmguest = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','guest');
             $vmconfig = $vmsdk->get_path($vmsearch->returnval->_,'VirtualMachine','config');
-        } /* else {
+          } /* else {
             // If we dont find it by name (using vmtools name) then search all names
             $allvms = $vmsdk->get_all_vms();
             foreach ($allvms->objects as $vmlist) {
@@ -160,9 +164,12 @@ print_r($vmclusters);
                     continue;
                 } 
             } 
-        } */
+          } */
 
+          // Should be done gathering data, log out of session
+          $vmsdk->logout();
 
+      } // end foreach of vmlogin config variable
 
     } else {
         $htmllines .= <<<EOL
@@ -170,9 +177,6 @@ print_r($vmclusters);
 EOL;
     }
 
-
-    // Should be done gathering data, log out of session
-    $vmsdk->logout();
 
     // If we never found our host, say so and bail
     if (!$foundhost) {
@@ -219,8 +223,12 @@ EOL;
     $vmnotes=$vmsummary->propSet->val->config->annotation;
     $vmnotes_short = truncate($vmnotes, 30);
     $ips = '';
-    foreach ($vmguest->propSet->val->net->ipAddress as $ipadd) {
-      $ips .= $ipadd.'<br>';
+    if (is_array($vmguest->propSet->val->net->ipAddress)) {
+      foreach ($vmguest->propSet->val->net->ipAddress as $ipadd) {
+        $ips .= $ipadd.'<br>';
+      }
+    } else {
+        $ips .= $vmguest->propSet->val->net->ipAddress.'<br>';
     }
 
     # figure out the provisioned amount
